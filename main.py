@@ -63,18 +63,18 @@ if __name__ == '__main__':
 	help="gpu card ID")
   args = parser.parse_args()
 
-  os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
-  cudnn.benchmark = True
+  # os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+  # cudnn.benchmark = True
 
 
   ############################## PREPARE DATASET ##########################
-  train_data, test_data, user_num ,item_num, train_mat = data_utils.load_all()
+  train_data, test_data, user_num, item_num = data_utils.load_all()
 
   # construct the train and test datasets
   train_dataset = data_utils.NCFData(
-		train_data, item_num, train_mat, args.num_ng, True)
+		train_data, item_num,args.num_ng, True)
   test_dataset = data_utils.NCFData(
-		test_data, item_num, train_mat, 0, False)
+		test_data, item_num,0, False)
   train_loader = data.DataLoader(train_dataset,
 		batch_size=args.batch_size, shuffle=True, num_workers=4)
   test_loader = data.DataLoader(test_dataset,

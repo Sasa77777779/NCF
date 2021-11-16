@@ -25,10 +25,11 @@ def load_all(test_num=100):
 	train_data = train_data.values.tolist()
 
 	# load ratings as a dok matrix
+	"""
 	train_mat = sp.dok_matrix((user_num, item_num), dtype=np.float32)
 	for x in train_data:
 		train_mat[x[0], x[1]] = 1.0
-
+    """
 	test_data = []
 	with open(config.test_negative, 'r') as fd:
 		line = fd.readline()
@@ -39,22 +40,23 @@ def load_all(test_num=100):
 			for i in arr[1:]:
 				test_data.append([u, int(i)])
 			line = fd.readline()
-	return train_data, test_data, user_num, item_num, train_mat
+	return train_data, test_data, user_num, item_num
 
 
 class NCFData(data.Dataset):
 	def __init__(self, features, 
-				num_item, train_mat=None, num_ng=0, is_training=None):
+				num_item, num_ng=0, is_training=None):
 		super(NCFData, self).__init__()
 		""" Note that the labels are only useful when training, we thus 
 			add them in the ng_sample() function.
 		"""
 		self.features_ps = features
 		self.num_item = num_item
-		self.train_mat = train_mat
+		# self.train_mat = train_mat
 		self.num_ng = num_ng
 		self.is_training = is_training
 		self.labels = [0 for _ in range(len(features))]
+		self.train_data_set = {(x, y) for (x, y) in features}
 
 	def ng_sample(self):
 		assert self.is_training, 'no need to sampling when testing'
@@ -64,7 +66,7 @@ class NCFData(data.Dataset):
 			u = x[0]
 			for t in range(self.num_ng):
 				j = np.random.randint(self.num_item)
-				while (u, j) in self.train_mat:
+				while (u, j) in self.train_data_set:
 					j = np.random.randint(self.num_item)
 				self.features_ng.append([u, j])
 
@@ -86,5 +88,5 @@ class NCFData(data.Dataset):
 		user = features[idx][0]
 		item = features[idx][1]
 		label = labels[idx]
-		return user, item ,label
+		return user, item, label
 		
