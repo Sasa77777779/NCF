@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd 
 import scipy.sparse as sp
 
-import torch.utils.data as data
+from torch.utils.data import Dataset
 
 import config
 
@@ -43,7 +43,7 @@ def load_all(test_num=100):
 	return train_data, test_data, user_num, item_num
 
 
-class NCFData(data.Dataset):
+class NCFData(Dataset):
 	def __init__(self, features, 
 				num_item, num_ng=0, is_training=None):
 		super(NCFData, self).__init__()
@@ -89,4 +89,20 @@ class NCFData(data.Dataset):
 		item = features[idx][1]
 		label = labels[idx]
 		return user, item, label
-		
+
+class MyDataset(Dataset):
+    def __init__(self, history, item_number):
+        super().__init__()
+        self.history = history
+        self.history_set = {(x, y) for x, y in history}
+        self.item_number = item_number
+
+    def __len__(self):
+        return len(self.history)
+
+    def __getitem__(self, index):
+        u, i = self.history[index]
+        j = np.random.randint(self.item_number)
+        while (u, j) in self.history_set:
+            j = np.random.randint(self.item_number)
+        return u, i, j

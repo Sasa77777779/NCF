@@ -1,3 +1,7 @@
+# encoding=utf-8
+import matplotlib.pyplot as plt
+from pylab import *
+
 import os
 import time
 import argparse
@@ -71,6 +75,7 @@ if __name__ == '__main__':
   train_data, test_data, user_num, item_num = data_utils.load_all()
 
   # construct the train and test datasets
+  """
   train_dataset = data_utils.NCFData(
 		train_data, item_num,args.num_ng, True)
   test_dataset = data_utils.NCFData(
@@ -79,7 +84,12 @@ if __name__ == '__main__':
 		batch_size=args.batch_size, shuffle=True, num_workers=4)
   test_loader = data.DataLoader(test_dataset,
 		batch_size=args.test_num_ng+1, shuffle=False, num_workers=0)
+  """
 
+  train_loader = data.DataLoader(data_utils.MyDataset(train_data, item_num), batch_size=args.batch_size,
+                                 shuffle=True, drop_last=True, num_workers=4)
+  test_loader = data.DataLoader(test_data, batch_size=100,
+                                shuffle=False, num_workers=0)
 ########################### CREATE MODEL #################################
   if config.model == 'NeuMF-pre':
     assert os.path.exists(config.GMF_model_path), 'lack of GMF model'
@@ -103,20 +113,29 @@ if __name__ == '__main__':
   # writer = SummaryWriter() # for visualization
 
   ########################### TRAINING #####################################
+  y = []
+  y1 = []
+
   count, best_hr = 0, 0
   for epoch in range(args.epochs):
     model.train() # Enable dropout (if have).
     start_time = time.time()
-    train_loader.dataset.ng_sample()
+    # train_loader.dataset.ng_sample()
 
-    for user, item, label in tqdm(train_loader):
+    for user, item_i, item_j in tqdm(train_loader):
         # user = user.cuda()
 		# item = item.cuda()
 		# label = label.float().cuda()
+        number = train_loader.batch_size
 
         model.zero_grad()
-        prediction = model(user, item)
-        loss = loss_function(prediction, label.float())
+        prediction1 = model(user, item_i)
+        prediction2 = model(user, item_j)
+        label1 = torch.ones(number)
+        label2 = torch.zeros(number)
+        loss1 = loss_function(prediction1, label1.float())
+        loss2 = loss_function(prediction2, label2.float())
+        loss = loss1 + loss2
         loss.backward()
         optimizer.step()
         # writer.add_scalar('data/loss', loss.item(), count)
@@ -130,6 +149,30 @@ if __name__ == '__main__':
 			time.strftime("%H: %M: %S", time.gmtime(elapsed_time)))
     print("HR: {:.3f}\tNDCG: {:.3f}".format(np.mean(HR), np.mean(NDCG)))
 
+    y.append(np.mean(HR))
+    y1.append(np.mean(NDCG))
+
+    with open("./output", "w") as fp:
+        fp.write(f"{y}\t{y1}\n")
+
+  x = range(args.epochs)
+  # plt.plot(x, y, 'ro-')
+  # plt.plot(x, y1, 'bo-')
+  # pl.xlim(-1, 11)  # 限定横轴的范围
+  # pl.ylim(-1, 110)  # 限定纵轴的范围
+  plt.plot(x, y, marker='o', mec='r', mfc='w', label=u'HR')
+  plt.plot(x, y1, marker='*', ms=10, label=u'NDCG')
+  plt.legend()  # 让图例生效
+  """
+  plt.xticks(x, names, rotation=45)
+  plt.margins(0)
+  plt.subplots_adjust(bottom=0.15)
+  """
+  plt.xlabel(u"epoch")  # X轴标签
+  plt.ylabel("score")  # Y轴标签
+  plt.title("NMF-positive:negative=1:1")  # 标题
+
+  plt.show()
 """
 	if HR > best_hr:
 		best_hr, best_ndcg, best_epoch = HR, NDCG, epoch
